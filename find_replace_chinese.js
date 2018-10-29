@@ -6,9 +6,13 @@
 		通过在第一个 { 括号后添加这个
 */
 var fs = require("fs");
+var path = require("path");
+var mkdirp = require('mkdirp');
+var config = require("./config");
 var num= 0;
 var pattern = /[\u4e00-\u9fa5]+/i;
 var result = "";
+var outputDir = config.outDir;
 var chinese= require("./chinese.json");
 
 var processFile = function(fileName){
@@ -87,7 +91,7 @@ var processFile = function(fileName){
 			var strQuoted = text.substr(firstQuote, secondQuote-firstQuote +1);
 			if( strBeforeQuote5 === "lang("){
 				var contentInStr = strQuoted.replace(/\"/g, "");
-				console.log("前面有lang", contentInStr);
+//				console.log("前面有lang", contentInStr);
 				chinese[contentInStr] = 1;
 			}
 			else if( strBeforeQuote6 !== "trace("){
@@ -112,7 +116,15 @@ var processFile = function(fileName){
 			//firstQuote = text.indexOf('"', secondQuote+1);
 			//secondQuote = text.indexOf('"', firstQuote+1);
 		}
-		fs.writeFileSync("./th/"+fileName, result);
+		let absolutePath = path.resolve(fileName);
+		let outputFileFullName = absolutePath.replace(config.srcDir, config.outDir);
+		console.log(absolutePath, '=>', outputFileFullName);
+		let outputDirName = path.dirname(outputFileFullName);
+		if( !fs.existsSync(outputDirName)){
+			mkdirp.sync(outputDirName);
+		}
+
+		fs.writeFileSync(outputFileFullName, result);
 		//	重新写回到
 		fs.writeFileSync("./myrzx_chinese.json", JSON.stringify(chinese, null, 4)); 
 		console.log(fileName+"替换完成");
@@ -137,7 +149,33 @@ var ifNeedReplace = function(strQuoted){
 	return true;
 }
 
-processFile("MYRLoaderStarter.as");
-//processFile("msg.txt");
+var processDir = function(dirName){
+	fs.readdir(dirName, function(err, files){
+		files.forEach(function(fileName){
+			let fullPathName = dirName+"/"+fileName;
+			let stat = fs.lstatSync(fullPathName);
+			//	是否是目录
+			if(stat.isDirectory()){
+				processDir(fullPathName);
+				return;
+			}
+			
+			//	处理文件
+			if( fullPathName.endsWith('.as')){
+				//	忽略目标文件夹
+//				console.log(fullPathName);
+				let absolutePath = path.resolve(fullPathName);
+				if( absolutePath.startsWith(outputDir)){
+//					console.log("忽略输出目录");
+					return;
+				}
+				processFile(fullPathName);
+			}
+		});
+	});
+}
+
+processDir(config.srcDir);
+
 
 
