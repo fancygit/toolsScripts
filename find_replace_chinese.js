@@ -13,11 +13,18 @@ var num= 0;
 var pattern = /[\u4e00-\u9fa5]+/i;
 var result = "";
 var outputDir = config.outDir;
-var chinese= require("./chinese.json");
+var chinese= [];
 
 var processFile = function(fileName){
-	fs.readFile(fileName, (err, data)=>{
-		if( err ) throw err;
+	var data = fs.readFileSync(fileName);
+	//fs.readFile(fileName, (err, data)=>{
+		/*
+		if( err ) {
+			console.log(err);
+			return;
+		};
+		*/
+		console.log("正在处理:",fileName);
 		var text = data.toString("utf-8");
 		var firstDaKuoHaoIndex = text.indexOf("{");
 		//	没有大括号则不修改此文件
@@ -89,6 +96,7 @@ var processFile = function(fileName){
 			}
 
 			var strQuoted = text.substr(firstQuote, secondQuote-firstQuote +1);
+			//console.log(strQuoted);
 			if( strBeforeQuote5 === "lang("){
 				var contentInStr = strQuoted.replace(/\"/g, "");
 //				console.log("前面有lang", contentInStr);
@@ -118,17 +126,16 @@ var processFile = function(fileName){
 		}
 		let absolutePath = path.resolve(fileName);
 		let outputFileFullName = absolutePath.replace(config.srcDir, config.outDir);
-		console.log(absolutePath, '=>', outputFileFullName);
+		//console.log(absolutePath, '=>', outputFileFullName);
+		console.log("处理完成:");
 		let outputDirName = path.dirname(outputFileFullName);
 		if( !fs.existsSync(outputDirName)){
 			mkdirp.sync(outputDirName);
 		}
 
 		fs.writeFileSync(outputFileFullName, result);
-		//	重新写回到
-		fs.writeFileSync("./myrzx_chinese.json", JSON.stringify(chinese, null, 4)); 
-		console.log(fileName+"替换完成");
-	});
+		//console.log(fileName+"替换完成");
+	//});
 }
 
 var ifNeedReplace = function(strQuoted){
@@ -150,32 +157,42 @@ var ifNeedReplace = function(strQuoted){
 }
 
 var processDir = function(dirName){
-	fs.readdir(dirName, function(err, files){
-		files.forEach(function(fileName){
-			let fullPathName = dirName+"/"+fileName;
-			let stat = fs.lstatSync(fullPathName);
-			//	是否是目录
-			if(stat.isDirectory()){
-				processDir(fullPathName);
-				return;
-			}
-			
-			//	处理文件
-			if( fullPathName.endsWith('.as')){
-				//	忽略目标文件夹
-//				console.log(fullPathName);
-				let absolutePath = path.resolve(fullPathName);
-				if( absolutePath.startsWith(outputDir)){
-//					console.log("忽略输出目录");
-					return;
-				}
-				processFile(fullPathName);
-			}
-		});
+	let files = fs.readdirSync(dirName);
+	files.forEach(function(fileName){
+		//			console.log(fileName);
+		let fullPathName = dirName+"/"+fileName;
+		let stat = fs.lstatSync(fullPathName);
+		//	是否是目录
+		if(stat.isDirectory()){
+			processDir(fullPathName);
+			return;
+		}
+
+		//	处理文件
+		if( fullPathName.endsWith('.as')){
+			//	忽略目标文件夹
+			//				console.log(fullPathName);
+			let absolutePath = path.resolve(fullPathName);
+			if( absolutePath.startsWith(outputDir)){
+			//					console.log("忽略输出目录");
+			return;
+		}
+			processFile(fullPathName);
+		}
 	});
+		/*
+	fs.readdir(dirName, function(err, files){
+	});
+	*/
 }
 
+//processFile('./StageCenter.as');
 processDir(config.srcDir);
+//	重新写回到
+var keys = Object.keys(chinese);
+var strKeys = keys.join("\n");
+//	fs.writeFileSync("./myrzx_chinese.json", JSON.stringify(Object.keys(chinese), null, 4)); 
+fs.writeFileSync("./myrzx_chinese.json", strKeys); 
 
 
 
