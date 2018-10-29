@@ -11,11 +11,11 @@ var mkdirp = require('mkdirp');
 var config = require("./config");
 var num= 0;
 var pattern = /[\u4e00-\u9fa5]+/i;
-var result = "";
 var outputDir = config.outDir;
 var chinese= [];
 
 var processFile = function(fileName){
+	var result = "";
 	var data = fs.readFileSync(fileName);
 	//fs.readFile(fileName, (err, data)=>{
 		/*
